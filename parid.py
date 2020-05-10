@@ -24,32 +24,38 @@ from matplotlib import pyplot as plt
 from scipy.optimize import rosen
 
 class Estimate:
-    def __init__(self, input, noise, technique, data=None):
-        self.input = input
-        self.noise = noise
-        self.technique = technique
-        self.data = data
+    def __init__(self):#, input, noise, technique, data=None):
+#         self.input = input
+#         self.noise = noise
+#         self.technique = technique
+#         self.data = data
+        return None
+        
+#     class Inputs:
+#         @staticmethod
+    def step(self, t, start, stop):
+        if t<start:
+            return 0
+        else:
+            return 1
 
-    class Inputs:
-        def step(self, t, start, stop):
-            if t<start:
-                return 0
-            else:
-                return 1
+    def rect(self, t, start, drop, stop):
+        if t>=start and t<stop:
+            return 1
+        else:
+            return 0
 
-        def rect(self, t, start, drop, stop):
-            if t>=start and t<stop:
-                return 1
-            else:
-                return 0
+    def doublet(self, t, start, drop, rise, stop):
+        if t>=start and t<drop:
+            return 1
+        elif t>=drop and t<rise:
+            return -1
+        else:
+            return 0
 
-        def doublet(self, t, start, drop, rise, stop):
-            if t>=start and t<drop:
-                return 1
-            elif t>=drop and t<rise:
-                return -1
-            else:
-                return 0
+    input_dict = {'Step': step, 
+          'Rect': rect, 
+          'Doublet': doublet}
     
     def load_data(self, file):
         if file == '':
@@ -62,7 +68,7 @@ class Estimate:
             tdata = df['Time']
             return [ydata, udata, tdata]
     
-    def save_data(d, save_name):
+    def save_data(self, d, save_name):
         t, y, u, yr, dur, coeff, div = d
 
         dd = {'Time': t,
@@ -93,53 +99,61 @@ class Estimate:
 
         return print(f'{save_name} successfully saved.')
     
-    class Noise:
-        def uniform_noise(ydata, Magnitude):
-            return [ydata[i] + random.uniform(-1,1)*Magnitude for i in range(len(ydata))]
+#     class Noise:
+    def uniform_noise(self, ydata, Magnitude):
+        return [ydata[i] + random.uniform(-1,1)*Magnitude for i in range(len(ydata))]
 
-        def pseudo_noise(ydata, Magnitude):
-            return [ydata[i] + random.randrange(start=-1,stop=1)*Magnitude for i in range(len(ydata))]
+    def pseudo_noise(self, ydata, Magnitude):
+        return [ydata[i] + random.randrange(start=-1,stop=1)*Magnitude for i in range(len(ydata))]
 
-        def no_noise(ydata):
-            return ydata
+    def no_noise(self, ydata):
+        return ydata
+    
+    noise_dict = {'None': no_noise,
+              'Uniform': uniform_noise,
+              'Non-uniform': pseudo_noise}
+    
+    def create_system(self, Numerator, Denominator):
+        return control.tf(Numerator, Denominator)
         
-    class Techniques:
-        def subspace_id(y, u):
-            ss1_id = sysid.subspace_det_algo1(y, u, f=5, p=5, s_tol=1e-1, dt=1)
-            return ss1_id 
+#     class Techniques:
+    def DE(self, function, Bounds):
+        return scipy.optimize.differential_evolution(function, Bounds).x
 
-        def DE(function, Bounds):
-            return scipy.optimize.differential_evolution(function, Bounds).x
+    def LS(self, function, Initial_Guess):
+        return scipy.optimize.least_squares(function, [i[0] for i in Initial_Guess]).x
 
-        def LS(function, Initial_Guess):
-            return scipy.optimize.least_squares(function, [i[0] for i in Initial_Guess]).x
+    def MIN(self, function, Initial_Guess):
+        return scipy.optimize.minimize(function, [i[0] for i in Initial_Guess]).x
 
-        def MIN(function, Initial_Guess):
-            return scipy.optimize.minimize(function, [i[0] for i in Initial_Guess]).x
+    def PSO(self, function, Initial_Bounds):
+        return psopy.minimize(function, numpy.array([numpy.random.uniform(*b, 10) for b in Initial_Bounds]).T).x
 
-        def PSO(function, Initial_Bounds):
-            return psopy.minimize(function, numpy.array([numpy.random.uniform(*b, 10) for b in Initial_Bounds]).T).x
+    def GA(self, function, Lengths):
+        print(Lengths)
+        return gamod.genetic_algorithm(function, [int(i[0]) for i in Lengths])
 
-        def GA(function, Lengths):
-            print(Lengths)
-            return gamod.genetic_algorithm(function, [int(i[0]) for i in Lengths])
-
-        def TS(function, Bounds):
-            return tsmod.tabu_search(function, Bounds)
+    def TS(self, function, Bounds):
+        return tsmod.tabu_search(function, Bounds)
+    
+    tech_dict = {'Differential Evolution': DE,
+            'Least Squares': LS,
+            'Scipy Minimize': MIN,
+            'Particle Swarm': PSO,
+            'Genetic Algorithm': GA,
+            'Tabu Search': TS}
         
-    def err(params, ts, ym, us, div):
+    def err(self, params, ts, ym, us, div):
         num = params[:div]
         den = params[div:]
         est_sys = control.tf(num, den)
         tsim, ysim, xsim = control.forced_response(est_sys, T=ts, U=us)
         return sum((ym - ysim)**2)
 
-    def res(params, ts, ym, us, div):
+    def res(self, params, ts, ym, us, div):
         num = params[:div]
         den = params[div:]
         est_sys = control.tf(num, den)
         tsim, ysim, xsim = control.forced_response(est_sys, T=ts, U=us)
         plt.plot(tsim, ysim, '--', label="Estimation")
         return ysim
-    
-    
