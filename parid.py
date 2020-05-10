@@ -1,16 +1,9 @@
-from inspect import signature
-
 import scipy
 import psopy
 import gamod
 import tsmod
 import sysid
 import ssid
-
-from ipywidgets import interact, interactive, interact_manual
-from IPython.display import display
-import IPython.display as dis
-import ipywidgets as wid
 
 import time
 import os.path
@@ -19,16 +12,25 @@ import random
 import pandas
 import numpy
 import control
+
 from matplotlib import pyplot as plt
 
-from scipy.optimize import rosen
-
-class Estimate:
-    def __init__(self):#, input, noise, technique, data=None):
-#         self.input = input
-#         self.noise = noise
-#         self.technique = technique
-#         self.data = data
+class Estimation:
+    def __init__(self):
+        self.input = {'Step': self.step, 
+                      'Rect': self.rect, 
+                      'Doublet': self.doublet}
+        
+        self.noise = {'None': self.no_noise,
+                      'Uniform': self.uniform_noise,
+                      'Non-uniform': self.pseudo_noise}
+        
+        self.tech = {'Differential Evolution': self.DE,
+                     'Least Squares': self.LS,
+                     'Scipy Minimize': self.MIN,
+                     'Particle Swarm': self.PSO,
+                     'Genetic Algorithm': self.GA,
+                     'Tabu Search': self.TS}
         return None
         
 #     class Inputs:
@@ -52,10 +54,6 @@ class Estimate:
             return -1
         else:
             return 0
-
-    input_dict = {'Step': step, 
-          'Rect': rect, 
-          'Doublet': doublet}
     
     def load_data(self, file):
         if file == '':
@@ -63,18 +61,17 @@ class Estimate:
             return [0, 0, 0]
         else:
             df = pandas.read_csv(f'{file}.csv')
-            ydata = df['Y'] - df['Y'][0]
-            udata = df['U'] - df['U'][0]
-            tdata = df['Time']
-            return [ydata, udata, tdata]
+            self.y = df['Y'] - df['Y'][0]
+            self.u = df['U'] - df['U'][0]
+            self.t = df['Time']
+            return self.y, self.u, self.t
     
-    def save_data(self, d, save_name):
-        t, y, u, yr, dur, coeff, div = d
+    def save_data(self, save_name):
 
-        dd = {'Time': t,
-              'Y': y,
-              'U': u,
-              'Y Estimate': yr}
+        dd = {'Time': self.t,
+              'Y': self.y,
+              'U': self.u,
+              'Y Estimate': self.yr}
 
         df = pandas.DataFrame(data=dd)
 
@@ -86,13 +83,13 @@ class Estimate:
 
         df.to_csv(f'{save_name}.csv')
 
-        dr = {'Run Time (s)': dur}
+        dr = {'Run Time (s)': self.dur}
 
         for i in range(len(coeff)):
-            if i < div:
-                dr[f'Numerator {i}'] = [coeff[i]]
+            if i < self.div:
+                dr[f'Numerator {i}'] = [self.coeff[i]]
             else:
-                dr[f'Denominator {i-div}'] = [coeff[i]]
+                dr[f'Denominator {i-self.div}'] = [self.coeff[i]]
 
         dfr = pandas.DataFrame(data=dr)
         dfr.to_csv(f'{save_name}_results.csv')
@@ -108,10 +105,6 @@ class Estimate:
 
     def no_noise(self, ydata):
         return ydata
-    
-    noise_dict = {'None': no_noise,
-              'Uniform': uniform_noise,
-              'Non-uniform': pseudo_noise}
     
     def create_system(self, Numerator, Denominator):
         return control.tf(Numerator, Denominator)
@@ -135,25 +128,53 @@ class Estimate:
 
     def TS(self, function, Bounds):
         return tsmod.tabu_search(function, Bounds)
-    
-    tech_dict = {'Differential Evolution': DE,
-            'Least Squares': LS,
-            'Scipy Minimize': MIN,
-            'Particle Swarm': PSO,
-            'Genetic Algorithm': GA,
-            'Tabu Search': TS}
         
-    def err(self, params, ts, ym, us, div):
+    def err(self, params, div):
         num = params[:div]
         den = params[div:]
         est_sys = control.tf(num, den)
-        tsim, ysim, xsim = control.forced_response(est_sys, T=ts, U=us)
-        return sum((ym - ysim)**2)
+        tsim, ysim, xsim = control.forced_response(est_sys, T=self.t, U=self.u)
+        return sum((self.y - ysim)**2)
 
-    def res(self, params, ts, ym, us, div):
+    def res(self, params, div):
         num = params[:div]
         den = params[div:]
         est_sys = control.tf(num, den)
-        tsim, ysim, xsim = control.forced_response(est_sys, T=ts, U=us)
+        tsim, ysim, xsim = control.forced_response(est_sys, T=self.t, U=self.u)
         plt.plot(tsim, ysim, '--', label="Estimation")
         return ysim
+
+    def set_data(self, t, y, u):
+        self.t = t
+        self.y = y
+        self.u = u
+        return None
+    
+    def get_data(self):
+        return self.t, self.y, self.u
+    
+    load_state = False
+    
+    def set_results(self, yr, dur, coeff, div):
+        self.yr = yr
+        self.dur = dur
+        self.coeff = coeff
+        self.div = div
+        return None
+    
+    def get_results(self):
+        return self.yr, self.dur, self.coeff, self.div
+    
+# Possible future use:
+# ------------------------------------------------------------------------
+# l = locals()
+
+# @staticmethod
+#     def method_list(obj):
+#         methods = []
+#         for f in dir(obj):
+#             if callable(getattr(obj, f)) and not f.startswith("_"):
+#                 methods.append(f)   
+#         funcs = [obj.l[f] for f in methods]
+#         vars = [f.__code__.co_varnames for f in funcs]
+#         return list(zip(funcs, vars))
