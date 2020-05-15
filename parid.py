@@ -64,6 +64,12 @@ class Estimation:
             self.y = df['Y'] - df['Y'][0]
             self.u = df['U'] - df['U'][0]
             self.t = df['Time']
+            
+            self.load_state = True
+            plt.plot(self.t, self.y, label="Real/Loaded")
+            plt.legend()
+            plt.show()
+            
             return self.y, self.u, self.t
     
     def save_data(self, save_name):
@@ -85,7 +91,7 @@ class Estimation:
 
         dr = {'Run Time (s)': self.dur}
 
-        for i in range(len(coeff)):
+        for i in range(len(self.coeff)):
             if i < self.div:
                 dr[f'Numerator {i}'] = [self.coeff[i]]
             else:
@@ -111,23 +117,28 @@ class Estimation:
         
 #     class Techniques:
     def DE(self, function, Bounds):
-        return scipy.optimize.differential_evolution(function, Bounds).x
+        self.coeff = scipy.optimize.differential_evolution(function, Bounds).x
+        return self.coeff
 
     def LS(self, function, Initial_Guess):
-        return scipy.optimize.least_squares(function, [i[0] for i in Initial_Guess]).x
+        self.coeff = scipy.optimize.least_squares(function, [i[0] for i in Initial_Guess]).x
+        return self.coeff
 
     def MIN(self, function, Initial_Guess):
-        return scipy.optimize.minimize(function, [i[0] for i in Initial_Guess]).x
+        self.coeff = scipy.optimize.minimize(function, [i[0] for i in Initial_Guess]).x
+        return self.coeff
 
     def PSO(self, function, Initial_Bounds):
-        return psopy.minimize(function, numpy.array([numpy.random.uniform(*b, 10) for b in Initial_Bounds]).T).x
+        self.coeff = psopy.minimize(function, numpy.array([numpy.random.uniform(*b, 10) for b in Initial_Bounds]).T).x
+        return self.coeff
 
     def GA(self, function, Lengths):
-        print(Lengths)
-        return gamod.genetic_algorithm(function, [int(i[0]) for i in Lengths])
+        self.coeff = gamod.genetic_algorithm(function, [int(i[0]) for i in Lengths])
+        return self.coeff
 
     def TS(self, function, Bounds):
-        return tsmod.tabu_search(function, Bounds)
+        self.coeff = tsmod.tabu_search(function, Bounds)
+        return self.coeff
         
     def err(self, params, div):
         num = params[:div]
@@ -142,15 +153,28 @@ class Estimation:
         est_sys = control.tf(num, den)
         tsim, ysim, xsim = control.forced_response(est_sys, T=self.t, U=self.u)
         plt.plot(tsim, ysim, '--', label="Estimation")
+        plt.legend()            
+        plt.show()
         return ysim
+    
+    def response(self, system, t, u):
+        return control.forced_response(system, T=t, U=u)
+    
+    def timespan(self, par):
+        return numpy.linspace(0, par['stop'], par['stop']*1)
 
     def set_data(self, t, y, u):
         self.t = t
         self.y = y
         self.u = u
+        
+        plt.plot(t, y, label="Real/Loaded")
+        plt.legend()            
+        plt.show()
         return None
     
     def get_data(self):
+        plt.plot(self.t, self.y, label="Real/Loaded")
         return self.t, self.y, self.u
     
     load_state = False
@@ -164,6 +188,30 @@ class Estimation:
     
     def get_results(self):
         return self.yr, self.dur, self.coeff, self.div
+    
+#     def estimate(self, u, n, sys):
+        
+#         for var in u.keys():
+#             input_params[var] = u[var].value
+
+#         for var in n.keys():
+#             noise_params[var] = n[var].value
+
+#         for var in sys.keys():
+#             sys_params[var] = [float(i) for i in sys[var].value.split(';')]
+        
+#         ts = numpy.linspace(0, input_params['stop'], input_params['stop']*1)
+#         us = [u(t, *input_params.values()) for t in ts]
+
+#         system = control.tf(*sys_params.values())
+#         tm, y1, xm = control.forced_response(system, T=ts, U=us)
+
+#         ym = n(y1, *c_noise_params.values())
+#         est.set_data(ts, ym, us)
+
+#         plt.plot(tm, ym, label="Real/Loaded")
+#         plt.legend()            
+#         plt.show()
     
 # Possible future use:
 # ------------------------------------------------------------------------
