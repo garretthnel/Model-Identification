@@ -2,8 +2,6 @@ import scipy
 import psopy
 import gamod
 import tsmod
-import sysid
-import ssid
 
 import time
 import os.path
@@ -31,29 +29,33 @@ class Estimation:
                      'Particle Swarm': self.PSO,
                      'Genetic Algorithm': self.GA,
                      'Tabu Search': self.TS}
-        return None
         
-#     class Inputs:
-#         @staticmethod
-    def step(self, t, start, stop):
-        if t<start:
-            return 0
+        self.description = {'input': '',
+                            'noise': '',
+                            'tech': ''}
+        
+        self.reset_history()
+        self.set_id()
+        
+        
+        if os.path.isfile('data.csv'):
+            self.data = pandas.read_csv('data.csv').set_index('key')
         else:
-            return 1
-
-    def rect(self, t, start, drop, stop):
-        if t>=start and t<stop:
-            return 1
+            self.data = pandas.DataFrame({'key': ['Dur', 'Num', 'Den', 'Num Est', 'Den Est', 'Time', 'Y', 'U', 'Y Est', 'Hist']}).set_index('key')
+            self.data.to_csv('data.csv')
+        
+        self.num = [] 
+        self.den = [] 
+        self.numest = []
+        self.denest = []
+        
+        return None
+    
+    def set_id(self, save=''):
+        if save != '':
+            self.current_id = f'{self.description['tech']}_{self.description['input']}_{self.description['noise']}_{save}'
         else:
-            return 0
-
-    def doublet(self, t, start, drop, rise, stop):
-        if t>=start and t<drop:
-            return 1
-        elif t>=drop and t<rise:
-            return -1
-        else:
-            return 0
+            self.current_id = f'{self.description['tech']}_{self.description['input']}_{self.description['noise']}'
     
     def load_data(self, file):
         if file == '':
@@ -65,79 +67,104 @@ class Estimation:
             self.u = df['U'] - df['U'][0]
             self.t = df['Time']
             
-            self.load_state = True
             plt.plot(self.t, self.y, label="Real/Loaded")
             plt.legend()
             plt.show()
             
             return self.y, self.u, self.t
     
-    def save_data(self, save_name):
-
-        dd = {'Time': self.t,
-              'Y': self.y,
-              'U': self.u,
-              'Y Estimate': self.yr}
-
-        df = pandas.DataFrame(data=dd)
-
-        if save_name == '':
-            save_name = 'New_Save'
-
-        while os.path.isfile(f'{save_name}.csv'):
-            save_name = save_name + "(1)"
-
-        df.to_csv(f'{save_name}.csv')
-
-        dr = {'Run Time (s)': self.dur}
-
+    def save_data(self, save_name=''):
+#         ['Duration', 'Num', 'Den', 'Num Est', 'Den Est', 'Time', 'Y', 'U', 'Y Est', 'History']
+        
+        self.set_id(save_name)
+        
         for i in range(len(self.coeff)):
             if i < self.div:
-                dr[f'Numerator {i}'] = [self.coeff[i]]
+                self.numest.append(self.coeff[i])
             else:
-                dr[f'Denominator {i-self.div}'] = [self.coeff[i]]
-
-        dfr = pandas.DataFrame(data=dr)
-        dfr.to_csv(f'{save_name}_results.csv')
-
-        return print(f'{save_name} successfully saved.')
+                self.denest.append(self.coeff[i])
     
-#     class Noise:
+        d = {f'{self.current_id}': [self.dur, self.num, self.den, self.numest, self.denest, self.t, self.y, self.u, self.yr, self.history]}
+
+        df = pandas.DataFrame(d)
+        
+        self.data = pandas.concat([self.data, df], axis=1)
+        
+        self.data.to_csv('data.csv')
+
+        return print(f'{self.current_id} data successfully saved.')
+    
+    def step(self, t, start, stop):
+        self.description['input'] = 'S'
+        
+        if t<start:
+            return 0
+        else:
+            return 1
+
+    def rect(self, t, start, drop, stop):
+        self.description['input'] = 'R'
+        
+        if t>=start and t<stop:
+            return 1
+        else:
+            return 0
+
+    def doublet(self, t, start, drop, rise, stop):
+        self.description['input'] = 'D'
+        
+        if t>=start and t<drop:
+            return 1
+        elif t>=drop and t<rise:
+            return -1
+        else:
+            return 0
+    
     def uniform_noise(self, ydata, Magnitude):
+        self.description['noise'] = 'U'
         return [ydata[i] + random.uniform(-1,1)*Magnitude for i in range(len(ydata))]
 
     def pseudo_noise(self, ydata, Magnitude):
+        self.description['noise'] = 'P'
         return [ydata[i] + random.randrange(start=-1,stop=1)*Magnitude for i in range(len(ydata))]
 
     def no_noise(self, ydata):
+        self.description['noise'] = 'N'
         return ydata
     
     def create_system(self, Numerator, Denominator):
-        return control.tf(Numerator, Denominator)
+        self.num = Numerator
+        self.den = Denominator
+        return control.tf(self.num, self.den)
         
-#     class Techniques:
     def DE(self, function, Bounds):
         self.coeff = scipy.optimize.differential_evolution(function, Bounds).x
+        self.description['tech'] = 'DE'
         return self.coeff
 
     def LS(self, function, Initial_Guess):
         self.coeff = scipy.optimize.least_squares(function, [i[0] for i in Initial_Guess]).x
+        self.description['tech'] = 'LS'
         return self.coeff
 
     def MIN(self, function, Initial_Guess):
         self.coeff = scipy.optimize.minimize(function, [i[0] for i in Initial_Guess]).x
+        self.description['tech'] = 'MIN'
         return self.coeff
 
     def PSO(self, function, Initial_Bounds):
         self.coeff = psopy.minimize(function, numpy.array([numpy.random.uniform(*b, 10) for b in Initial_Bounds]).T).x
+        self.description['tech'] = 'PSO'
         return self.coeff
 
     def GA(self, function, Lengths):
         self.coeff = gamod.genetic_algorithm(function, [int(i[0]) for i in Lengths])
+        self.description['tech'] = 'GA'
         return self.coeff
 
     def TS(self, function, Bounds):
         self.coeff = tsmod.tabu_search(function, Bounds)
+        self.description['tech'] = 'TS'
         return self.coeff
         
     def err(self, params, div):
@@ -145,7 +172,8 @@ class Estimation:
         den = params[div:]
         est_sys = control.tf(num, den)
         tsim, ysim, xsim = control.forced_response(est_sys, T=self.t, U=self.u)
-        return sum((self.y - ysim)**2)
+        self.history.append(sum((self.y - ysim)**2))
+        return self.history[-1]
 
     def res(self, params, div):
         num = params[:div]
@@ -177,8 +205,6 @@ class Estimation:
         plt.plot(self.t, self.y, label="Real/Loaded")
         return self.t, self.y, self.u
     
-    load_state = False
-    
     def set_results(self, yr, dur, coeff, div):
         self.yr = yr
         self.dur = dur
@@ -189,29 +215,18 @@ class Estimation:
     def get_results(self):
         return self.yr, self.dur, self.coeff, self.div
     
-#     def estimate(self, u, n, sys):
-        
-#         for var in u.keys():
-#             input_params[var] = u[var].value
-
-#         for var in n.keys():
-#             noise_params[var] = n[var].value
-
-#         for var in sys.keys():
-#             sys_params[var] = [float(i) for i in sys[var].value.split(';')]
-        
-#         ts = numpy.linspace(0, input_params['stop'], input_params['stop']*1)
-#         us = [u(t, *input_params.values()) for t in ts]
-
-#         system = control.tf(*sys_params.values())
-#         tm, y1, xm = control.forced_response(system, T=ts, U=us)
-
-#         ym = n(y1, *c_noise_params.values())
-#         est.set_data(ts, ym, us)
-
-#         plt.plot(tm, ym, label="Real/Loaded")
-#         plt.legend()            
-#         plt.show()
+    def reset_history(self):
+        self.history = []
+        return None
+    
+    def get_history(self):
+        plt.plot(self.history[:])
+        plt.yscale('log')
+        plt.xlabel('Iteration')
+        plt.ylabel('Error')
+        plt.show()
+        print(f'Last Error: {self.history[-1]} \nLowest Error: {min(self.history)}')
+        return self.history
     
 # Possible future use:
 # ------------------------------------------------------------------------
