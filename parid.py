@@ -53,11 +53,12 @@ class Estimation:
     
     def set_id(self, save=''):
         if save != '':
-            self.current_id = f'{self.description['tech']}_{self.description['input']}_{self.description['noise']}_{save}'
+            self.current_id = f'{self.description["tech"]}_{self.description["input"]}_{self.description["noise"]}_{save}'
         else:
-            self.current_id = f'{self.description['tech']}_{self.description['input']}_{self.description['noise']}'
+            self.current_id = f'{self.description["tech"]}_{self.description["input"]}_{self.description["noise"]}'
     
     def load_data(self, file):
+        self.reset_history()
         if file == '':
             print('Please enter a file name to load.')
             return [0, 0, 0]
@@ -135,6 +136,7 @@ class Estimation:
     def create_system(self, Numerator, Denominator):
         self.num = Numerator
         self.den = Denominator
+        self.reset_history()
         return control.tf(self.num, self.den)
         
     def DE(self, function, Bounds):
@@ -227,17 +229,3 @@ class Estimation:
         plt.show()
         print(f'Last Error: {self.history[-1]} \nLowest Error: {min(self.history)}')
         return self.history
-    
-# Possible future use:
-# ------------------------------------------------------------------------
-# l = locals()
-
-# @staticmethod
-#     def method_list(obj):
-#         methods = []
-#         for f in dir(obj):
-#             if callable(getattr(obj, f)) and not f.startswith("_"):
-#                 methods.append(f)   
-#         funcs = [obj.l[f] for f in methods]
-#         vars = [f.__code__.co_varnames for f in funcs]
-#         return list(zip(funcs, vars))
