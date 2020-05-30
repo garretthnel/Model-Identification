@@ -131,23 +131,23 @@ def sim(Input='Step', Noise="None", Technique='Genetic Algorithm'):
             
             run_state = True   
 
-    def run_all_clicked(b):
-        with output:
-            dis.clear_output(True)
-            for systems in system_list:
-                for keys, tech in est.tech.items():
-                    tech_sig = tech.__code__.co_varnames[2:]
-                    for names in tech_sig:
-                        if 'Bounds' in names:
-                            print('B')
-                        elif 'Guess' in names:
-                            print('G')
-                        elif 'Lengths' in names:
-                            print('L')
+#     def run_all_clicked(b):
+#         with output:
+#             dis.clear_output(True)
+#             for systems in system_list:
+#                 for keys, tech in est.tech.items():
+#                     tech_sig = tech.__code__.co_varnames[2:]
+#                     for names in tech_sig:
+#                         if 'Bounds' in names:
+#                             print('B')
+#                         elif 'Guess' in names:
+#                             print('G')
+#                         elif 'Lengths' in names:
+#                             print('L')
                     
-    run_all = wid.Button(description='Run all')
-    display(run_all)
-    run_all.on_click(run_all_clicked)
+#     run_all = wid.Button(description='Run all')
+#     display(run_all)
+#     run_all.on_click(run_all_clicked)
     
     display(run_sim)
     display(run_est, output)

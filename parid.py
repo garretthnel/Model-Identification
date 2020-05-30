@@ -10,6 +10,7 @@ import random
 import pandas
 import numpy
 import control
+import json
 
 from matplotlib import pyplot as plt
 
@@ -63,10 +64,12 @@ class Estimation:
             print('Please enter a file name to load.')
             return [0, 0, 0]
         else:
-            df = pandas.read_csv(f'{file}.csv')
-            self.y = df['Y'] - df['Y'][0]
-            self.u = df['U'] - df['U'][0]
-            self.t = df['Time']
+            with open(f'{file}.json', 'r') as f:
+                d =  json.load(f)
+
+            self.y = numpy.array(d['Y']) - d['Y'][0]
+            self.u = numpy.array(d['U']) - d['U'][0]
+            self.t = d['Time']
             
             plt.plot(self.t, self.y, label="Real/Loaded")
             plt.legend()
@@ -75,7 +78,6 @@ class Estimation:
             return self.y, self.u, self.t
     
     def save_data(self, save_name=''):
-#         ['Duration', 'Num', 'Den', 'Num Est', 'Den Est', 'Time', 'Y', 'U', 'Y Est', 'History']
         
         self.set_id(save_name)
         
@@ -84,19 +86,30 @@ class Estimation:
                 self.numest.append(self.coeff[i])
             else:
                 self.denest.append(self.coeff[i])
-    
-        d = {f'{self.current_id}': [self.dur, self.num, self.den, self.numest, self.denest, self.t, self.y, self.u, self.yr, self.history]}
-
-        df = pandas.DataFrame(d)
         
-        self.data = pandas.concat([self.data, df], axis=1)
+        d = {
+             "Technique": self.description['tech'],
+             "Input": self.description['input'],
+             "Noise": self.description['noise'],
+             "Duration": self.dur,
+             "Num": list(self.num),
+             "Den": list(self.den),
+             "Num Est": list(self.numest),
+             "Den Est": list(self.denest),
+             "Time": list(self.t),
+             "Y": list(self.y),
+             "U": list(self.u),
+             "Y Est": list(self.yr),
+             "History": list(self.history)
+        }
         
-        self.data.to_csv('data.csv')
+        with open(f'{self.current_id}.json', 'w') as f:
+            json.dump(d, f)
 
-        return print(f'{self.current_id} data successfully saved.')
+        return print(f'test data successfully saved.')
     
     def step(self, t, start, stop):
-        self.description['input'] = 'S'
+        self.description['input'] = 'Step'
         
         if t<start:
             return 0
@@ -104,7 +117,7 @@ class Estimation:
             return 1
 
     def rect(self, t, start, drop, stop):
-        self.description['input'] = 'R'
+        self.description['input'] = 'Rect'
         
         if t>=start and t<stop:
             return 1
@@ -112,7 +125,7 @@ class Estimation:
             return 0
 
     def doublet(self, t, start, drop, rise, stop):
-        self.description['input'] = 'D'
+        self.description['input'] = 'Doublet'
         
         if t>=start and t<drop:
             return 1
@@ -122,15 +135,15 @@ class Estimation:
             return 0
     
     def uniform_noise(self, ydata, Magnitude):
-        self.description['noise'] = 'U'
+        self.description['noise'] = 'Uniform'
         return [ydata[i] + random.uniform(-1,1)*Magnitude for i in range(len(ydata))]
 
     def pseudo_noise(self, ydata, Magnitude):
-        self.description['noise'] = 'P'
+        self.description['noise'] = 'Pseudo'
         return [ydata[i] + random.randrange(start=-1,stop=1)*Magnitude for i in range(len(ydata))]
 
     def no_noise(self, ydata):
-        self.description['noise'] = 'N'
+        self.description['noise'] = 'None'
         return ydata
     
     def create_system(self, Numerator, Denominator):
