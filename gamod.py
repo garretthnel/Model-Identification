@@ -1,12 +1,12 @@
 import pygad
 import numpy
 
-def genetic_algorithm(function, Lengths):
+def genetic_algorithm(function, Orders):
     
     fitness = 0
     count = 0
     
-    Length = sum(Lengths)
+    Length = sum(Orders)
     
     def fitness_func(solution):
         fitness = 1.0/function(solution)
@@ -18,10 +18,9 @@ def genetic_algorithm(function, Lengths):
           num_genes=Length,
           fitness_func=fitness_func)
     
-    while fitness < 1000 and count < 100:
+    while fitness < 1000 and count < 1000:
         ga_instance.run()
         res = ga_instance.best_solution()
         x, fitness = res
-        if count == 99: print('Max iterations reached') 
     
     return x
