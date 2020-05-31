@@ -20,12 +20,12 @@ def genetic_algorithm(function, Orders):
           fitness_func=fitness_func)
     
     f = 100
-    with tqdm(total=f) as pbar:
-        while fitness < 1/1e-2 and count < f:
-            ga_instance.run()
-            res = ga_instance.best_solution()
-            x, fitness, solution_idx = res
-            count += 1
-            pbar.update(1)
+#     with tqdm(total=f) as pbar:
+    while fitness < 1/1e-2 and count < f:
+        ga_instance.run()
+        res = ga_instance.best_solution()
+        x, fitness, solution_idx = res
+        count += 1
+#             pbar.update(1)
     
     return x

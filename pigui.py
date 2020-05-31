@@ -9,8 +9,29 @@ import importlib
 
 import parid
 import numpy
+from tqdm.auto import tqdm
 
 est = parid.Estimation()
+
+def do_run(params, tech, div, plot):
+    print('Now running {}'.format(tech.__name__))
+    def err_wrap(params):
+        return est.err(params, div)
+
+    def res_wrap(params):
+        return est.res(params, div, plot)
+
+    st = time.time()
+    cs = tech(err_wrap, params)
+    coeff = numpy.array(cs)/min([abs(i) for i in cs if abs(i) > 1e-3])
+    et = time.time()
+
+    dur = et-st
+
+    yres = res_wrap(coeff)
+
+    est.set_results(yres, dur, coeff, div)
+    return None
 
 def sim(Input='Step', Noise="None", Technique='Genetic Algorithm'):
 
@@ -91,7 +112,7 @@ def sim(Input='Step', Noise="None", Technique='Genetic Algorithm'):
             tm, y1, xm = est.response(system, ts, us)
             
             ym = n(y1, *c_noise_params.values())
-            est.set_data(ts, ym, us)
+            est.set_data(ts, ym, us, True)
         
     def run_est_clicked(b):
         with output:
@@ -106,48 +127,61 @@ def sim(Input='Step', Noise="None", Technique='Genetic Algorithm'):
             
             div = orders[0]
             
-            def err_wrap(params):
-                return est.err(params, div)
-        
-            def res_wrap(params):
-                return est.res(params, div)
-            
             print('Running...')
-            st = time.time()
-            cs = tech(err_wrap, arr_tech_params)
-            coeff = numpy.array(cs)/min([abs(i) for i in cs if abs(i) > 1e-3])
-            et = time.time()
-            print('Done.')
             
-            dur = et-st
+            print(arr_tech_params)
+            do_run(arr_tech_params, tech, div, True)
+    
+            yr, dur, coeff, div = est.get_results()
+        
+            print('Done.')
             print("Parameters estimated as {} in {} seconds".format(coeff, dur))
             
-            ts, ym, _ = est.get_data()
-            
-            yres = res_wrap(coeff)
-            
-            est.set_results(yres, dur, coeff, div)
             est.get_history()
             
             run_state = True   
+            
+    def run_all_clicked(b):
+        with output:
+            numrun = len(est.input.items()) + len(system_list) + len(est.noise.items()) + len(est.tech.items())
+            dis.clear_output(True)
+            pbar = tqdm(total=numrun)
+            ts = numpy.linspace(0, 600, 600)
+            for ukeys, u in est.input.items():
+                us = [u(t) for t in ts]
+                for systems in system_list:
+                    div = len(systems[0])
+                    tm, y1, xm = est.response(est.create_system(*systems), ts, us)
+                    for nkeys, n in est.noise.items():
+                        est.set_data(ts, n(y1), us, False)
+                        for tkeys, tech in est.tech.items():
+                            tech_sig = tech.__code__.co_varnames[2:]
+                            names = tech_sig[0]
+                            params = []
+                            if 'Bounds' in names:
+                                for s in systems:
+                                    for p in s:
+                                        params.append(numpy.array([0, p])*abs(numpy.random.randn()))
 
-#     def run_all_clicked(b):
-#         with output:
-#             dis.clear_output(True)
-#             for systems in system_list:
-#                 for keys, tech in est.tech.items():
-#                     tech_sig = tech.__code__.co_varnames[2:]
-#                     for names in tech_sig:
-#                         if 'Bounds' in names:
-#                             print('B')
-#                         elif 'Guess' in names:
-#                             print('G')
-#                         elif 'Lengths' in names:
-#                             print('L')
-                    
-#     run_all = wid.Button(description='Run all')
-#     display(run_all)
-#     run_all.on_click(run_all_clicked)
+                            elif 'Guess' in names:
+                                for s in systems:
+                                    for p in s:
+                                        params.append([abs(p*numpy.random.randn())])
+
+                            elif 'Lengths' in names:
+                                for s in systems:
+                                    params.append([len(s)])
+                            
+                            do_run(params, tech, div, False)
+                            est.save_data(systems)
+                            pbar.update(1)
+            print('Done')
+            pbar.close()       
+        return None
+    
+    run_all = wid.Button(description='Run all')
+    display(run_all)
+    run_all.on_click(run_all_clicked)
     
     display(run_sim)
     display(run_est, output)
@@ -165,7 +199,6 @@ def sim(Input='Step', Noise="None", Technique='Genetic Algorithm'):
             est.save_data(Save_Name.value)
             
     run_save.on_click(run_save_clicked)
-    
     
 system_list = []
     

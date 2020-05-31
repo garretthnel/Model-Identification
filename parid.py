@@ -38,13 +38,6 @@ class Estimation:
         self.reset_history()
         self.set_id()
         
-        
-        if os.path.isfile('data.csv'):
-            self.data = pandas.read_csv('data.csv').set_index('key')
-        else:
-            self.data = pandas.DataFrame({'key': ['Dur', 'Num', 'Den', 'Num Est', 'Den Est', 'Time', 'Y', 'U', 'Y Est', 'Hist']}).set_index('key')
-            self.data.to_csv('data.csv')
-        
         self.num = [] 
         self.den = [] 
         self.numest = []
@@ -87,8 +80,7 @@ class Estimation:
             else:
                 self.denest.append(self.coeff[i])
         
-        d = {
-             "Technique": self.description['tech'],
+        d = {"Technique": self.description['tech'],
              "Input": self.description['input'],
              "Noise": self.description['noise'],
              "Duration": self.dur,
@@ -100,15 +92,14 @@ class Estimation:
              "Y": list(self.y),
              "U": list(self.u),
              "Y Est": list(self.yr),
-             "History": list(self.history)
-        }
+             "History": list(self.history)}
         
         with open(f'{self.current_id}.json', 'w') as f:
             json.dump(d, f)
 
-        return print(f'test data successfully saved.')
+        return print(f'{self.current_id} data successfully saved.')
     
-    def step(self, t, start, stop):
+    def step(self, t, start=50, stop=600):
         self.description['input'] = 'Step'
         
         if t<start:
@@ -116,7 +107,7 @@ class Estimation:
         else:
             return 1
 
-    def rect(self, t, start, drop, stop):
+    def rect(self, t, start=50, drop=200, stop=600):
         self.description['input'] = 'Rect'
         
         if t>=start and t<stop:
@@ -124,7 +115,7 @@ class Estimation:
         else:
             return 0
 
-    def doublet(self, t, start, drop, rise, stop):
+    def doublet(self, t, start=50, drop=200, rise=250, stop=600):
         self.description['input'] = 'Doublet'
         
         if t>=start and t<drop:
@@ -134,11 +125,11 @@ class Estimation:
         else:
             return 0
     
-    def uniform_noise(self, ydata, Magnitude):
+    def uniform_noise(self, ydata, Magnitude=0.1):
         self.description['noise'] = 'Uniform'
         return [ydata[i] + random.uniform(-1,1)*Magnitude for i in range(len(ydata))]
 
-    def pseudo_noise(self, ydata, Magnitude):
+    def pseudo_noise(self, ydata, Magnitude=0.1):
         self.description['noise'] = 'Pseudo'
         return [ydata[i] + random.randrange(start=-1,stop=1)*Magnitude for i in range(len(ydata))]
 
@@ -190,14 +181,16 @@ class Estimation:
         self.history.append(sum((self.y - ysim)**2))
         return self.history[-1]
 
-    def res(self, params, div):
+    def res(self, params, div, plot):
         num = params[:div]
         den = params[div:]
         est_sys = control.tf(num, den)
         tsim, ysim, xsim = control.forced_response(est_sys, T=self.t, U=self.u)
-        plt.plot(tsim, ysim, '--', label="Estimation")
-        plt.legend()            
-        plt.show()
+        if plot:
+            plt.plot(self.t, self.y, label="Real/Loaded")
+            plt.plot(tsim, ysim, '--', label="Estimation")
+            plt.legend()            
+            plt.show()
         return ysim
     
     def response(self, system, t, u):
@@ -206,18 +199,17 @@ class Estimation:
     def timespan(self, par):
         return numpy.linspace(0, par['stop'], par['stop']*1)
 
-    def set_data(self, t, y, u):
+    def set_data(self, t, y, u, plot):
         self.t = t
         self.y = y
         self.u = u
-        
-        plt.plot(t, y, label="Real/Loaded")
-        plt.legend()            
-        plt.show()
+        if plot:
+            plt.plot(t, y, label="Real/Loaded")
+            plt.legend()            
+            plt.show()
         return None
     
     def get_data(self):
-        plt.plot(self.t, self.y, label="Real/Loaded")
         return self.t, self.y, self.u
     
     def set_results(self, yr, dur, coeff, div):
