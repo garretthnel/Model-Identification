@@ -24,9 +24,9 @@ class Estimation:
                       'Uniform': self.uniform_noise,
                       'Non-uniform': self.pseudo_noise}
         
-        self.tech = {'Differential Evolution': self.DE,
+        self.tech = {'Scipy Minimize': self.MIN,
+                     'Differential Evolution': self.DE,
                      'Least Squares': self.LS,
-                     'Scipy Minimize': self.MIN,
                      'Particle Swarm': self.PSO,
                      'Genetic Algorithm': self.GA,
                      'Tabu Search': self.TS}
@@ -35,13 +35,11 @@ class Estimation:
                             'noise': '',
                             'tech': ''}
         
-        self.reset_history()
+        self.reset()
         self.set_id()
         
         self.num = [] 
         self.den = [] 
-        self.numest = []
-        self.denest = []
         
         return None
     
@@ -138,9 +136,9 @@ class Estimation:
         return ydata
     
     def create_system(self, Numerator, Denominator):
+        self.reset()
         self.num = Numerator
         self.den = Denominator
-        self.reset_history()
         return control.tf(self.num, self.den)
         
     def DE(self, function, Bounds):
@@ -222,8 +220,10 @@ class Estimation:
     def get_results(self):
         return self.yr, self.dur, self.coeff, self.div
     
-    def reset_history(self):
+    def reset(self):
         self.history = []
+        self.numest = []
+        self.denest = []
         return None
     
     def get_history(self):
