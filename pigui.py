@@ -127,7 +127,6 @@ def sim(Input='Step', Noise="None", Technique='Genetic Algorithm'):
             
             print('Running...')
             
-            print(arr_tech_params)
             do_run(arr_tech_params, tech, div, True)
     
             yr, dur, coeff, div = est.get_results()
@@ -142,12 +141,13 @@ def sim(Input='Step', Noise="None", Technique='Genetic Algorithm'):
     def run_all_clicked(b):
         with output:
             numrun = len(est.input.items()) * len(system_list) * len(est.noise.items()) * len(est.tech.items())
+            print(f'Starting {numrun} runs...')
             dis.clear_output(True)
             
             start_time = time.time()
-            joblib.Parallel(n_jobs=-1,verbose=100)(joblib.delayed(run_all)(systems) for systems in system_list)
-
+            joblib.Parallel(n_jobs=24,verbose=100)(joblib.delayed(run_all)(systems) for systems in system_list)
             done_time = time.time()
+            
             print('Done')
             print(f'Time elapsed:{done_time-start_time:.4g}')     
         return None
@@ -199,7 +199,7 @@ def sim(Input='Step', Noise="None", Technique='Genetic Algorithm'):
 
                     est.set_results(yres, dur, coeff, div)
     
-#                     est.save_data(systems)
+                    est.save_data(systems)
     
     run_all_button = wid.Button(description='Run all')
     display(run_all_button)

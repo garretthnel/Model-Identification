@@ -24,12 +24,12 @@ class Estimation:
                       'Uniform': self.uniform_noise,
                       'Non-uniform': self.pseudo_noise}
         
-        self.tech = {'Scipy Minimize': self.MIN,
+        self.tech = {#'Tabu Search': self.TS,
+                     'Scipy Minimize': self.MIN,
                      'Differential Evolution': self.DE,
                      'Least Squares': self.LS,
                      'Particle Swarm': self.PSO,
-                     'Genetic Algorithm': self.GA,
-                     'Tabu Search': self.TS}
+                     'Genetic Algorithm': self.GA}
         
         self.description = {'input': '',
                             'noise': '',
