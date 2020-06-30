@@ -168,7 +168,7 @@ def sim(Input='Step', Noise="None", Technique='Genetic Algorithm'):
                     if 'Bounds' in names:
                         for s in systems:
                             for p in s:
-                                params.append(numpy.array([0, p])*abs(numpy.random.randn()))
+                                params.append(numpy.array([0.1, p])*abs(numpy.random.randn()))
 
                     elif 'Guess' in names:
                         for s in systems:

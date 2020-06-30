@@ -22,14 +22,15 @@ class Estimation:
         
         self.noise = {'None': self.no_noise,
                       'Uniform': self.uniform_noise,
-                      'Non-uniform': self.pseudo_noise}
+                      'Normal': self.normal_noise}
         
-        self.tech = {#'Tabu Search': self.TS,
+        self.tech = {'Tabu Search': self.TS,
                      'Scipy Minimize': self.MIN,
                      'Differential Evolution': self.DE,
                      'Least Squares': self.LS,
                      'Particle Swarm': self.PSO,
-                     'Genetic Algorithm': self.GA}
+                     'Genetic Algorithm': self.GA
+                    }
         
         self.description = {'input': '',
                             'noise': '',
@@ -45,9 +46,9 @@ class Estimation:
     
     def set_id(self, save=''):
         if save != '':
-            self.current_id = f'{self.description["tech"]}_{self.description["input"]}_{self.description["noise"]}_{save}'
+            self.current_id = f'{save}_{self.description["tech"]}_{self.description["input"]}_{self.description["noise"]}_15'
         else:
-            self.current_id = f'{self.description["tech"]}_{self.description["input"]}_{self.description["noise"]}'
+            self.current_id = f'{self.description["tech"]}_{self.description["input"]}_{self.description["noise"]}_15'
     
     def load_data(self, file):
         self.reset_history()
@@ -127,10 +128,14 @@ class Estimation:
         self.description['noise'] = 'Uniform'
         return [ydata[i] + random.uniform(-1,1)*Magnitude for i in range(len(ydata))]
 
-    def pseudo_noise(self, ydata, Magnitude=0.1):
-        self.description['noise'] = 'Pseudo'
-        return [ydata[i] + random.randrange(start=-1,stop=1)*Magnitude for i in range(len(ydata))]
-
+#     def pseudo_noise(self, ydata, Magnitude=0.1):
+#         self.description['noise'] = 'Pseudo'
+#         return [ydata[i] + random.randrange(start=-1,stop=1)*Magnitude for i in range(len(ydata))]
+    
+    def normal_noise(self, ydata, Deviation=0.1):
+        self.description['noise'] = 'Normal'
+        return [ydata[i] + random.normalvariate(0, Deviation) for i in range(len(ydata))]
+    
     def no_noise(self, ydata):
         self.description['noise'] = 'None'
         return ydata
@@ -176,7 +181,7 @@ class Estimation:
         den = params[div:]
         est_sys = control.tf(num, den)
         tsim, ysim, xsim = control.forced_response(est_sys, T=self.t, U=self.u)
-        self.history.append(sum((self.y - ysim)**2))
+        numpy.nan_to_num(self.history.append(sum((self.y - ysim)**2)))
         return self.history[-1]
 
     def res(self, params, div, plot):
